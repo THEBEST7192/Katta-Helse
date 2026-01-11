@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# Katta Skolehelsetjeneste
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+En modernisert versjon av skolehelsetjenestens nettside for Hamar katedralskole. Bygget med React, TypeScript og Tailwind CSS v4, med en Node.js-backend og PostgreSQL-integrasjon.
 
-Currently, two official plugins are available:
+## Funksjoner
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Moderne brukergrensesnitt**: Rent og responsivt design med skolens fargeprofil (#005850).
+- **Timebestilling**: Et fullstack-system for reservasjon av samtaler.
+- **Åpningstider**: Oversiktlig visning av når helsetjenesten er tilgjengelig.
+- **Snapchat-integrasjon**: Enkel tilgang via Snapchat QR-kode.
+- **Interaktivt kart**: Informasjon om hvor du finner kontoret på skolen.
 
-## React Compiler
+## Teknologier
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: Vite, React, TypeScript, Tailwind CSS v4, Framer Motion, Lucide React.
+- **Backend**: Node.js, Express, PostgreSQL, Cors, Dotenv.
 
-## Expanding the ESLint configuration
+## Kom i gang
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Forutsetninger
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js installert
+- En PostgreSQL-database (f.eks. via Supabase, Render, eller lokalt)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Oppsett av Backend
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1. Gå til server-mappen:
+   ```bash
+   cd server
+   ```
+2. Installer avhengigheter:
+   ```bash
+   npm install
+   ```
+3. Konfigurer miljøvariabler:
+   - Endre navn på `.env.example` til `.env`
+   - Oppdater `DATABASE_URL` med din PostgreSQL-tilkoblingsstreng.
+   - Standard port er `6767`.
+4. Start serveren:
+   ```bash
+   npm run dev
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Oppsett av Frontend
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. Gå tilbake til rotmappen:
+   ```bash
+   cd ..
+   ```
+2. Installer avhengigheter:
+   ```bash
+   npm install
+   ```
+3. Start utviklingsserveren:
+   ```bash
+   npm run dev
+   ```
+4. Åpne nettleseren på adressen oppgitt av Vite (vanligvis `http://localhost:8001`).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Du kan endre porten ved å lage en `.env`-fil i rotmappen og sette `PORT=din_port`.
+
+## Prosjektstruktur
+
+- `/src`: Kildekode for React frontend.
+- `/server`: Node.js backend med API-endepunkter og databaselogikk.
+- `/public`: Statiske filer som logo og Snapchat QR-kode.

@@ -1,9 +1,100 @@
 import { useState } from 'react';
-import { Phone, MapPin, MessageCircle, Heart, Info, ArrowRight, ExternalLink, Menu, X } from 'lucide-react';
+import { Phone, MapPin, MessageCircle, Heart, Info, ArrowRight, ExternalLink, Menu, X, Calendar, Clock, User, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [reservation, setReservation] = useState({
+    name: '',
+    email: '',
+    date: '',
+    time: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  const handleReservationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Valider åpningstider
+    const selectedDate = new Date(reservation.date);
+    const day = selectedDate.getDay(); // 0 = Søndag, 1 = Mandag, osv.
+    const [hour, minute] = reservation.time.split(':').map(Number);
+
+    let isValidTime = false;
+    let errorMessage = "";
+
+    if (day === 0 || day === 6) {
+      errorMessage = "Vi har stengt i helgene. Vennligst velg en hverdag.";
+    } else {
+      if ((day === 1 || day === 2 || day === 4)) {
+        if (hour >= 9 && hour < 14) isValidTime = true;
+        if (hour === 14 && minute === 0) isValidTime = true;
+      } else if (day === 3) {
+        if (hour >= 9 && hour < 13) isValidTime = true;
+        if (hour === 13 && minute === 0) isValidTime = true;
+      } else if (day === 5) {
+        if (hour >= 9 && hour < 11) isValidTime = true;
+        if (hour === 11 && minute === 0) isValidTime = true;
+      }
+      
+      if (!isValidTime && !errorMessage) {
+        errorMessage = `Vi har stengt på det valgte tidspunktet. Se åpningstidene våre lenger ned.`;
+      }
+    }
+
+    if (!isValidTime) {
+      setSubmitStatus({ type: 'error', message: errorMessage });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus(null);
+
+    try {
+      const response = await fetch('http://localhost:6767/api/reservations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(reservation),
+      });
+
+      if (response.ok) {
+        setSubmitStatus({ type: 'success', message: 'Takk! Din reservasjon er mottatt.' });
+        setReservation({ name: '', email: '', date: '', time: '', message: '' });
+      } else {
+        throw new Error('Noe gikk galt. Prøv igjen senere.');
+      }
+    } catch {
+      setSubmitStatus({ type: 'error', message: 'Kunne ikke koble til serveren. Vennligst prøv igjen senere.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getAvailableHours = () => {
+    if (!reservation.date) return [];
+    const day = new Date(reservation.date).getDay();
+    if (day === 1 || day === 2 || day === 4) return ['09', '10', '11', '12', '13', '14'];
+    if (day === 3) return ['09', '10', '11', '12', '13'];
+    if (day === 5) return ['09', '10', '11'];
+    return [];
+  };
+
+  const getAvailableMinutes = (selectedHour: string) => {
+    if (!reservation.date || !selectedHour) return ['00', '15', '30', '45'];
+    const day = new Date(reservation.date).getDay();
+    
+    // Sjekk om dette er siste time for dagen
+    const isLastHour = 
+      ((day === 1 || day === 2 || day === 4) && selectedHour === '14') ||
+      (day === 3 && selectedHour === '13') ||
+      (day === 5 && selectedHour === '11');
+
+    return isLastHour ? ['00'] : ['00', '15', '30', '45'];
+  };
 
   const fadeIn = {
     initial: { opacity: 0, y: 20 },
@@ -24,6 +115,7 @@ function App() {
             {/* Desktop Menu */}
             <div className="hidden md:flex items-center gap-8">
               <a href="#kontakt" className="text-sm font-medium hover:text-katta-500 transition-colors">Kontakt</a>
+              <a href="#reserver" className="text-sm font-medium hover:text-katta-500 transition-colors">Reserver time</a>
               <a href="#hvor" className="text-sm font-medium hover:text-katta-500 transition-colors">Hvor er vi?</a>
               <a href="#kontakt" className="bg-katta-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-katta-600 transition-all shadow-sm active:scale-95">
                 Snakk med oss
@@ -56,6 +148,13 @@ function App() {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Kontakt
+                </a>
+                <a 
+                  href="#reserver" 
+                  className="block text-lg font-medium text-slate-900"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Reserver time
                 </a>
                 <a 
                   href="#hvor" 
@@ -129,6 +228,163 @@ function App() {
           </div>
         </section>
 
+        {/* Reservation Section */}
+        <section id="reserver" className="py-24 bg-katta-50">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="bg-white p-8 md:p-12 rounded-3xl shadow-sm border border-katta-100"
+            >
+              <div className="text-center mb-10">
+                <h2 className="text-3xl font-bold mb-4">Reserver en samtale</h2>
+                <p className="text-slate-600">
+                  Fyll ut skjemaet under for å be om en samtale. Vi tar kontakt med deg så snart som mulig.
+                </p>
+              </div>
+
+              <form onSubmit={handleReservationSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label htmlFor="name" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <User className="h-4 w-4 text-katta-500" /> Fullt navn
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      required
+                      value={reservation.name}
+                      onChange={(e) => setReservation({ ...reservation, name: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-katta-500/20 focus:border-katta-500 transition-all"
+                      placeholder="Ditt navn"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="email" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-katta-500" /> E-post eller mobil
+                    </label>
+                    <input
+                      type="text"
+                      id="email"
+                      required
+                      value={reservation.email}
+                      onChange={(e) => setReservation({ ...reservation, email: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-katta-500/20 focus:border-katta-500 transition-all"
+                      placeholder="Hvordan kan vi nå deg?"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label htmlFor="date" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-katta-500" /> Ønsket dato
+                    </label>
+                    <input
+                      type="date"
+                      id="date"
+                      required
+                      value={reservation.date}
+                      onChange={(e) => {
+                        setReservation({ ...reservation, date: e.target.value, time: '' });
+                      }}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-katta-500/20 focus:border-katta-500 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="time" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-katta-500" /> Ønsket tidspunkt
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        id="time-hour"
+                        required
+                        value={reservation.time.split(':')[0] || ''}
+                        onChange={(e) => {
+                          const newHour = e.target.value;
+                          const availableMinutes = getAvailableMinutes(newHour);
+                          const currentMinute = reservation.time.split(':')[1] || '00';
+                          const finalMinute = availableMinutes.includes(currentMinute) ? currentMinute : '00';
+                          setReservation({ ...reservation, time: `${newHour}:${finalMinute}` });
+                        }}
+                        className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-katta-500/20 focus:border-katta-500 transition-all bg-white"
+                      >
+                        <option value="" disabled>Time</option>
+                        {getAvailableHours().map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                        {getAvailableHours().length === 0 && (
+                          <option disabled>Velg en hverdag først</option>
+                        )}
+                      </select>
+                      <div className="flex items-center text-slate-400 font-bold">:</div>
+                      <select
+                        id="time-minute"
+                        required
+                        value={reservation.time.split(':')[1] || ''}
+                        onChange={(e) => {
+                          const newMinute = e.target.value;
+                          const currentHour = reservation.time.split(':')[0] || '09';
+                          setReservation({ ...reservation, time: `${currentHour}:${newMinute}` });
+                        }}
+                        className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-katta-500/20 focus:border-katta-500 transition-all bg-white"
+                      >
+                        <option value="" disabled>Min</option>
+                        {getAvailableMinutes(reservation.time.split(':')[0]).map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2 flex items-center gap-1.5 font-medium">
+                      <Info className="h-3.5 w-3.5 text-katta-500" />
+                      Vennligst velg et tidspunkt innenfor våre åpningstider.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="message" className="text-sm font-semibold text-slate-700">
+                    Hva vil du snakke om? (Valgfritt)
+                  </label>
+                  <textarea
+                    id="message"
+                    rows={4}
+                    value={reservation.message}
+                    onChange={(e) => setReservation({ ...reservation, message: e.target.value })}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-katta-500/20 focus:border-katta-500 transition-all resize-none"
+                    placeholder="Skriv litt om hva du trenger hjelp til..."
+                  />
+                </div>
+
+                {submitStatus && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className={`p-4 rounded-xl text-sm font-medium ${
+                      submitStatus.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
+                    }`}
+                  >
+                    {submitStatus.message}
+                  </motion.div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-katta-500 text-white py-4 rounded-xl font-bold hover:bg-katta-600 transition-all shadow-md active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>Send forespørsel <ArrowRight className="h-5 w-5" /></>
+                  )}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        </section>
+
         {/* Staff & Contact */}
         <section id="kontakt" className="pt-12 pb-24 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -162,7 +418,7 @@ function App() {
                     </div>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center text-sm border-b border-slate-200 pb-2">
-                        <span className="text-slate-600">Mandag, tirsdag & torsdag</span>
+                        <span className="text-slate-600">Mandag, tirsdag og torsdag</span>
                         <span className="font-bold text-katta-700">09:00 – 14:00</span>
                       </div>
                       <div className="flex justify-between items-center text-sm border-b border-slate-200 pb-2">
