@@ -53,7 +53,8 @@ function App() {
     setSubmitStatus(null);
 
     try {
-      const response = await fetch('http://localhost:6767/api/reservations', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6767';
+      const response = await fetch(`${apiUrl}/api/reservations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +105,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900">
-      {/* Navigation */}
+      {/* Navigasjon */}
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
@@ -112,7 +113,7 @@ function App() {
               <img src="/logo.svg" alt="Hamar Katedralskole" className="h-10 w-auto" />
             </div>
             
-            {/* Desktop Menu */}
+            {/* Desktop Meny */}
             <div className="hidden md:flex items-center gap-8">
               <a href="#kontakt" className="text-sm font-medium hover:text-katta-500 transition-colors">Kontakt</a>
               <a href="#reserver" className="text-sm font-medium hover:text-katta-500 transition-colors">Reserver time</a>
@@ -122,7 +123,7 @@ function App() {
               </a>
             </div>
 
-            {/* Mobile Menu Button */}
+            {/* Knapp for mobilmeny */}
             <button 
               className="md:hidden p-2 text-slate-600 hover:text-katta-500 transition-colors"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -132,7 +133,7 @@ function App() {
           </div>
         </div>
 
-        {/* Mobile Menu Overlay */}
+        {/* Mobilmeny-overlay */}
         <AnimatePresence>
           {isMenuOpen && (
             <motion.div
@@ -177,7 +178,7 @@ function App() {
       </nav>
 
       <main>
-        {/* Hero Section */}
+        {/* Hero-seksjon */}
         <section className="relative overflow-hidden bg-white pt-36 pb-28 lg:pt-32 lg:pb-40">
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.div {...fadeIn}>
@@ -202,7 +203,7 @@ function App() {
           </div>
         </section>
 
-        {/* Features / Icons */}
+        {/* Funksjoner / Ikoner */}
         <section className="pt-24 pb-12 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -228,7 +229,7 @@ function App() {
           </div>
         </section>
 
-        {/* Reservation Section */}
+        {/* Reservasjonsseksjon */}
         <section id="reserver" className="py-24 bg-katta-50">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
@@ -385,7 +386,7 @@ function App() {
           </div>
         </section>
 
-        {/* Staff & Contact */}
+        {/* Ansatte og kontakt */}
         <section id="kontakt" className="pt-12 pb-24 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold mb-8">Vi er her for deg</h2>
@@ -454,7 +455,7 @@ function App() {
           </div>
         </section>
 
-        {/* Location Section */}
+        {/* Sted-seksjon */}
         <section id="hvor" className="py-24 bg-katta-900 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
@@ -505,7 +506,7 @@ function App() {
         </section>
       </main>
 
-      {/* Footer */}
+      {/* Bunntekst */}
       <footer className="bg-white border-t border-slate-200 pt-10 pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">

@@ -5,11 +5,25 @@ import sql from './db.js';
 const app = express();
 const port = process.env.PORT || 6767;
 
-// Middleware
-app.use(cors());
+// Mellomvare
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:8001'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Tillat kun forespørsler med en definert origin som er i hvitlisten
+    if (!origin || allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
 app.use(express.json());
 
-// Initialize database table
+// Initialiser databasetabell
 const initDb = async () => {
   try {
     await sql`
@@ -31,7 +45,7 @@ const initDb = async () => {
 
 initDb();
 
-// Routes
+// Ruter
 app.post('/api/reservations', async (req, res) => {
   const { name, email, date, time, message } = req.body;
 
