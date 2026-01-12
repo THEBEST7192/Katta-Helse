@@ -69,11 +69,29 @@ app.post('/api/reservations', async (req, res) => {
 app.get('/api/reservations', async (req, res) => {
   try {
     const reservations = await sql`
-      SELECT * FROM reservations ORDER BY created_at DESC
+      SELECT * FROM reservations 
+      WHERE date > CURRENT_DATE 
+      OR (date = CURRENT_DATE AND time >= date_trunc('hour', CURRENT_TIME::time))
+      ORDER BY date ASC, time ASC
     `;
     res.json(reservations);
   } catch (err) {
     console.error('Error fetching reservations:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/reservations/public', async (req, res) => {
+  try {
+    const reservations = await sql`
+      SELECT date, time FROM reservations 
+      WHERE date > CURRENT_DATE 
+      OR (date = CURRENT_DATE AND time >= date_trunc('hour', CURRENT_TIME::time))
+      ORDER BY date ASC, time ASC
+    `;
+    res.json(reservations);
+  } catch (err) {
+    console.error('Error fetching public reservations:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
