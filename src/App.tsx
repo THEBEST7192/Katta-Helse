@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Phone, MapPin, MessageCircle, Heart, Info, ArrowRight, ExternalLink, Menu, X, Calendar, Clock, User, Mail } from 'lucide-react';
+import { Phone, MapPin, MessageCircle, Heart, Info, ArrowRight, ExternalLink, Menu, X, Calendar, Clock, User, Mail, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarView } from './components/Calendar/CalendarView';
 
 const navLinks = [
   { name: 'Hjem', id: 'home', view: 'landing' as const },
-  { name: 'Bestill time', id: 'reservation', view: 'landing' as const },
   { name: 'Tjenester', id: 'services', view: 'landing' as const },
+  { name: 'Bestill time', id: 'reservation', view: 'landing' as const },
   { name: 'Om oss', id: 'about', view: 'landing' as const },
+  { name: 'FAQ', id: 'faq', view: 'landing' as const },
   { name: 'Kalender', id: 'calendar', view: 'calendar' as const },
 ];
 
@@ -481,7 +482,7 @@ function App() {
             </section>
 
             {/* Ansatte og kontakt */}
-            <section id="about" className="pt-12 pb-24 bg-white">
+            <section id="about" className="pt-12 pb-0 bg-white">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <h2 className="text-3xl font-bold mb-8">Vi er her for deg</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
@@ -545,6 +546,62 @@ function App() {
                       <p className="text-center text-slate-500 text-sm font-medium">Scan koden for å legge oss til</p>
                     </div>
                   </div>
+                </div>
+              </div>
+            </section>
+
+            {/* FAQ-seksjon */}
+            <section id="faq" className="py-24 bg-white">
+              <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-16">
+                  <h2 className="text-3xl font-bold mb-4">Ofte stilte spørsmål</h2>
+                  <p className="text-slate-600">
+                    Her finner du svar på det de fleste lurer på om skolehelsetjenesten.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  {[
+                    {
+                      q: "Hva koster det å bruke skolehelsetjenesten?",
+                      a: "Alle tjenester hos skolehelsetjenesten er helt gratis for alle elever ved skolen."
+                    },
+                    {
+                      q: "Har dere taushetsplikt?",
+                      a: "Ja, alle som jobber her har streng taushetsplikt. Det du forteller oss blir mellom oss, med mindre det er fare for liv og helse."
+                    },
+                    {
+                      q: "Må jeg bestille time på forhånd?",
+                      a: "Nei, du kan gjerne stikke innom på drop-in hvis døren er åpen. Men hvis du vil være sikker på å få snakket med oss, er det lurt å bestille en time her på nettsiden eller via SMS."
+                    },
+                    {
+                      q: "Kan jeg få prevensjon hos dere?",
+                      a: "Ja, vi kan skrive ut resept på prevensjon (p-piller, p-stav, spiral osv.) og vi deler ut gratis kondomer."
+                    },
+                    {
+                      q: "Hva kan jeg snakke med dere om?",
+                      a: "Du kan snakke med oss om alt! Ingenting er for lite eller for stort. Det kan være kjærlighetssorg, problemer hjemme, prevensjon, ensomhet, stress eller fysiske plager."
+                    }
+                  ].map((faq, i) => (
+                    <motion.div 
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                      className="border border-slate-200 rounded-2xl overflow-hidden"
+                    >
+                      <details className="group">
+                        <summary className="flex items-center justify-between p-6 cursor-pointer list-none bg-white hover:bg-slate-50 transition-colors">
+                          <span className="font-bold text-slate-900 pr-4">{faq.q}</span>
+                          <ChevronDown className="h-5 w-5 text-slate-400 group-open:rotate-180 transition-transform" />
+                        </summary>
+                        <div className="px-6 pb-6 text-slate-600 leading-relaxed border-t border-slate-100 pt-4">
+                          {faq.a}
+                        </div>
+                      </details>
+                    </motion.div>
+                  ))}
                 </div>
               </div>
             </section>
