@@ -92,11 +92,17 @@ function DoctorCalendar() {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
+  const [authToken, setAuthToken] = useState('');
+  const [loginError, setLoginError] = useState('');
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (token?: string) => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6767';
-      const response = await fetch(`${apiUrl}/api/reservations`);
+      const response = await fetch(`${apiUrl}/api/reservations`, {
+        headers: {
+          'Authorization': token || authToken
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         // Ekstra filtrering i frontend for å sikre at vi kun viser fremtidige avtaler (fra og med inneværende time)
@@ -123,13 +129,32 @@ function DoctorCalendar() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'katta123') { // Enkel demo-passord
-      setIsAuthenticated(true);
-      fetchAppointments();
-    } else {
-      alert("Feil passord!");
+    setLoginError('');
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6767';
+      const response = await fetch(`${apiUrl}/api/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setAuthToken(password);
+        setIsAuthenticated(true);
+        fetchAppointments(password);
+      } else {
+        setLoginError(data.error || 'Feil passord');
+      }
+    } catch (error) {
+      console.error("Innloggingsfeil:", error);
+      setLoginError('Kunne ikke koble til serveren');
     }
   };
 
@@ -148,11 +173,12 @@ function DoctorCalendar() {
             <label className="block text-sm font-medium text-slate-700 mb-1">Passord</label>
             <input 
               type="password" 
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-katta-500 focus:border-transparent outline-none transition-all"
+              className={`w-full px-4 py-3 rounded-xl border ${loginError ? 'border-red-500 bg-red-50' : 'border-slate-200'} focus:ring-2 focus:ring-katta-500 focus:border-transparent outline-none transition-all`}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Skriv inn passord..."
             />
+            {loginError && <p className="text-red-500 text-xs mt-1 font-medium">{loginError}</p>}
           </div>
           <button type="submit" className="w-full bg-katta-500 text-white py-3 rounded-xl font-bold hover:bg-katta-600 transition-all shadow-md">
             Logg inn
@@ -170,7 +196,14 @@ function DoctorCalendar() {
         <h2 className="text-3xl font-bold text-katta-500 flex items-center gap-2">
           <User className="h-8 w-8" /> Pasientoversikt
         </h2>
-        <button onClick={() => setIsAuthenticated(false)} className="text-sm text-slate-500 hover:text-red-500 flex items-center gap-1">
+        <button 
+          onClick={() => {
+            setIsAuthenticated(false);
+            setAuthToken('');
+            setPassword('');
+          }} 
+          className="text-sm text-slate-500 hover:text-red-500 flex items-center gap-1"
+        >
           <EyeOff className="h-4 w-4" /> Logg ut
         </button>
       </div>

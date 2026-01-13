@@ -46,6 +46,17 @@ const initDb = async () => {
 initDb();
 
 // Ruter
+app.post('/api/login', (req, res) => {
+  const { password } = req.body;
+  const correctPassword = process.env.DOCTOR_PASSWORD || 'katta123';
+
+  if (password === correctPassword) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ success: false, error: 'Feil passord' });
+  }
+});
+
 app.post('/api/reservations', async (req, res) => {
   const { name, email, date, time, message } = req.body;
 
@@ -67,6 +78,13 @@ app.post('/api/reservations', async (req, res) => {
 });
 
 app.get('/api/reservations', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const correctPassword = process.env.DOCTOR_PASSWORD || 'katta123';
+
+  if (authHeader !== correctPassword) {
+    return res.status(401).json({ error: 'Uautorisert tilgang' });
+  }
+
   try {
     const reservations = await sql`
       SELECT * FROM reservations 

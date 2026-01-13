@@ -6,6 +6,7 @@ En modernisert versjon av skolehelsetjenestens nettside for Hamar katedralskole.
 
 - **Moderne brukergrensesnitt**: Rent og responsivt design med skolens fargeprofil (#005850).
 - **Timebestilling**: Et fullstack-system for reservasjon av samtaler.
+- **Kalender-visninger**: Offentlig oversikt over opptatte tider, samt en passordbeskyttet lege-oversikt med pasientdetaljer.
 - **Åpningstider**: Oversiktlig visning av når helsetjenesten er tilgjengelig.
 - **Snapchat-integrasjon**: Enkel tilgang via Snapchat QR-kode.
 - **Interaktivt kart**: Informasjon om hvor du finner kontoret på skolen.
@@ -35,6 +36,7 @@ En modernisert versjon av skolehelsetjenestens nettside for Hamar katedralskole.
 3. Konfigurer miljøvariabler:
    - Endre navn på `.env.example` til `.env`
    - Oppdater `DATABASE_URL` med din PostgreSQL-tilkoblingsstreng.
+   - Sett `DOCTOR_PASSWORD` til ønsket passord for lege-oversikten (standard: `katta123`).
    - Standard port er `6767`.
 4. Start serveren:
    ```bash
