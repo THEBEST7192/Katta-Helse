@@ -540,7 +540,7 @@ function App() {
                         </div>
                       </div>
                       <div className="w-64 h-64 mb-6">
-                        <img src="/snapchat-qr.jpg" alt="Snapchat QR Code" className="w-full h-full object-contain" />
+                        <img src="/snapchat-qr.png" alt="Snapchat QR Code" className="w-full h-full object-contain" />
                       </div>
                       <p className="text-center text-slate-500 text-sm font-medium">Scan koden for å legge oss til</p>
                     </div>
@@ -587,13 +587,27 @@ function App() {
                     </div>
                     
                     <div className="pt-4">
-                      <button className="flex items-center gap-2 text-katta-100 font-bold hover:text-white transition-all border-b-2 border-katta-500 hover:border-white pb-1">
+                      <a 
+                        href="https://www.google.com/maps/search/?api=1&query=60.80578546070512,11.054866109563148" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-katta-100 font-bold hover:text-white transition-all border-b-2 border-katta-500 hover:border-white pb-1"
+                      >
                         Se skolen i kart <ArrowRight className="h-5 w-5" />
-                      </button>
+                      </a>
                     </div>
                   </div>
-                  <div className="flex-1 w-full aspect-video bg-katta-950/50 rounded-3xl border border-katta-700/50 flex items-center justify-center overflow-hidden grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all cursor-pointer">
-                    <p className="text-katta-400 italic">Interaktivt kart kommer</p>
+                  <div className="flex-1 w-full aspect-video bg-katta-950/50 rounded-3xl border border-katta-700/50 overflow-hidden">
+                    <iframe 
+                      src="https://maps.google.com/maps?q=60.80578546070512,11.054866109563148&z=17&output=embed" 
+                      width="100%" 
+                      height="100%" 
+                      style={{ border: 0 }} 
+                      allowFullScreen={true} 
+                      loading="lazy" 
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="opacity-100"
+                    ></iframe>
                   </div>
                 </div>
               </div>
