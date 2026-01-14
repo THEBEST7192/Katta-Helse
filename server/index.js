@@ -7,6 +7,19 @@ import sql from './db.js';
 const app = express();
 const port = process.env.PORT || 6767;
 
+// Stol på proxy-headere fra Cloudflare
+app.set('trust proxy', 1);
+
+// Debug: Logg tillatte origins ved start (fjern trailing slashes, backticks og sitattegn)
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => 
+      origin.trim()
+        .replace(/[`"']/g, '') // Fjern backticks og sitattegn
+        .replace(/\/$/, '')    // Fjern trailing slash
+    ) 
+  : ['http://localhost:8001'];
+console.log('Allowed Origins (fully cleaned):', allowedOrigins);
+
 // Generell rate limiter for alle forespørsler
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -27,25 +40,35 @@ const strictLimiter = rateLimit({
 
 app.use(globalLimiter);
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) 
-  : ['http://localhost:8001'];
-
 app.use(cors({
   origin: (origin, callback) => {
-    // Tillat forespørsler uten origin (som mobilapper eller curl)
+    // Tillat forespørsler uten origin (f.eks. server-til-server eller direkte i browser)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Rens innkommende origin for sammenligning
+    const normalizedOrigin = origin.trim().replace(/[`"']/g, '').replace(/\/$/, '');
+    
+    if (allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked for origin: ${origin}`);
+      // Logg blokkeringen, men ikke krasj serveren
+      console.warn(`CORS BLOCKED: Origin "${origin}" (Normalized: "${normalizedOrigin}") is not in whitelist:`, allowedOrigins);
+      // Ved å sende null, false vil cors-modulen utelate headers, som trigger browser-blokkering
       callback(null, false);
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
 app.use(express.json());
+
+// Logger for alle forespørsler (plassert etter CORS for å se hva som skjer)
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} - Origin: ${req.headers.origin || 'None'}`);
+  next();
+});
 
 const initDb = async () => {
   try {
@@ -134,6 +157,16 @@ app.get('/api/reservations/public', async (req, res) => {
     console.error('Error fetching public reservations:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Global feilhåndterer
+app.use((err, req, res, next) => {
+  console.error('SERVER ERROR:', err.stack);
+  res.status(500).json({ 
+    error: 'Internal Server Error', 
+    message: err.message,
+    path: req.url 
+  });
 });
 
 app.listen(port, () => {
