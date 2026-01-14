@@ -1,29 +1,52 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { rateLimit } from 'express-rate-limit';
 import sql from './db.js';
 
 const app = express();
 const port = process.env.PORT || 6767;
 
-// Mellomvare
+// Generell rate limiter for alle forespørsler
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'For mange forespørsler, vennligst prøv igjen senere.' }
+});
+
+// Strengere limiter for innlogging og reservasjoner
+const strictLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'For mange forsøk fra denne IP-adressen. Vennligst vent 10 minutter.' }
+});
+
+app.use(globalLimiter);
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) 
   : ['http://localhost:8001'];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Tillat kun forespørsler med en definert origin som er i hvitlisten
-    if (!origin || allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+    // Tillat forespørsler uten origin (som mobilapper eller curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked for origin: ${origin}`);
+      callback(null, false);
     }
-    return callback(null, true);
   },
   credentials: true
 }));
 app.use(express.json());
 
-// Initialiser databasetabell
 const initDb = async () => {
   try {
     await sql`
@@ -45,8 +68,7 @@ const initDb = async () => {
 
 initDb();
 
-// Ruter
-app.post('/api/login', (req, res) => {
+app.post('/api/login', strictLimiter, (req, res) => {
   const { password } = req.body;
   const correctPassword = process.env.DOCTOR_PASSWORD || 'katta123';
 
@@ -57,7 +79,7 @@ app.post('/api/login', (req, res) => {
   }
 });
 
-app.post('/api/reservations', async (req, res) => {
+app.post('/api/reservations', strictLimiter, async (req, res) => {
   const { name, email, date, time, message } = req.body;
 
   if (!name || !email || !date || !time) {
