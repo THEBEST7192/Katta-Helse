@@ -11,17 +11,24 @@ const port = process.env.PORT || 6767;
 app.set('trust proxy', 1);
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()) 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim().replace(/\/$/, '')) 
   : ['http://localhost:8001'];
 
-// CORS må være først for å sikre at alle svar (inkl. 429) har riktige headere
+console.log('Server starting with allowed origins:', allowedOrigins);
+
+// CORS konfigurasjon
 app.use(cors({
   origin: (origin, callback) => {
+    // Tillat forespørsler uten origin (som mobilapper eller curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    
+    const normalizedOrigin = origin.trim().replace(/\/$/, '');
+    
+    if (allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS blocked for origin: ${origin}`);
+      // Logg blokkerte forespørsler
+      console.warn(`CORS blocked for: "${origin}". Expected one of: ${allowedOrigins.join(', ')}`);
       callback(null, false);
     }
   },
@@ -44,6 +51,11 @@ const strictLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'For mange forsøk fra denne IP-adressen. Vennligst vent 10 minutter.' }
+});
+
+// Health check endepunkt
+app.get('/api/health', globalLimiter, (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.use(globalLimiter);
@@ -136,6 +148,15 @@ app.get('/api/reservations/public', async (req, res) => {
     console.error('Error fetching public reservations:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Global feilhåndtering
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ 
+    error: 'Internal Server Error',
+    message: err.message 
+  });
 });
 
 app.listen(port, () => {
