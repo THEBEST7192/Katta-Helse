@@ -11,24 +11,25 @@ const port = process.env.PORT || 6767;
 app.set('trust proxy', 1);
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim().replace(/\/$/, '')) 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.replace(/[\s`"']/g, '').replace(/\/$/, '')) 
   : ['http://localhost:8001'];
 
-console.log('Server starting with allowed origins:', allowedOrigins);
+console.log('Server starting with allowed origins (V2 - Aggressive Cleaning):', allowedOrigins);
 
 // CORS konfigurasjon
 app.use(cors({
   origin: (origin, callback) => {
-    // Tillat forespørsler uten origin (som mobilapper eller curl)
+    // Logg alle forespørsler for å se hva som skjer på serveren
+    console.log(`DEBUG: Incoming request from origin: "${origin}"`);
+    
     if (!origin) return callback(null, true);
     
-    const normalizedOrigin = origin.trim().replace(/\/$/, '');
+    const normalizedOrigin = origin.replace(/[\s`"']/g, '').replace(/\/$/, '');
     
     if (allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
-      // Logg blokkerte forespørsler
-      console.warn(`CORS blocked for: "${origin}". Expected one of: ${allowedOrigins.join(', ')}`);
+      console.warn(`CORS REJECTED: "${normalizedOrigin}" not in [${allowedOrigins.join(', ')}]`);
       callback(null, false);
     }
   },
@@ -145,8 +146,8 @@ app.get('/api/reservations/public', async (req, res) => {
     `;
     res.json(reservations);
   } catch (err) {
-    console.error('Error fetching public reservations:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('DATABASE ERROR on /api/reservations/public:', err);
+    res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
 
