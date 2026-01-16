@@ -1,8 +1,16 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { rateLimit } from 'express-rate-limit';
 import sql from './db.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '.env.local'), override: true });
 
 const app = express();
 const port = process.env.PORT || 6767;
@@ -10,15 +18,17 @@ const port = process.env.PORT || 6767;
 // Stol på proxy-headere (nødvendig for Cloudflare/proxy)
 app.set('trust proxy', 1);
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.replace(/[\s`"']/g, '').replace(/\/$/, '')) 
-  : ['http://localhost:8081'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS
+      .split(',')
+      .map(origin => origin.replace(/[\s`"']/g, '').replace(/\/$/, ''))
+      .filter(Boolean)
+  : ['http://localhost:8081', 'https://helse.the-diddy.party'];
 
 console.log('Server starting with allowed origins:', allowedOrigins);
 
-// CORS konfigurasjon
 const corsOptions = {
-  origin: allowedOrigins.includes('*') ? '*' : (origin, callback) => {
+  origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     const normalizedOrigin = origin.replace(/[\s`"']/g, '').replace(/\/$/, '');
     if (allowedOrigins.includes(normalizedOrigin)) {
@@ -28,7 +38,7 @@ const corsOptions = {
       callback(null, false);
     }
   },
-  credentials: !allowedOrigins.includes('*'),
+  credentials: true,
   optionsSuccessStatus: 200
 };
 
