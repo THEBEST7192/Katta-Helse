@@ -12,29 +12,27 @@ app.set('trust proxy', 1);
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.replace(/[\s`"']/g, '').replace(/\/$/, '')) 
-  : ['http://localhost:8001'];
+  : ['http://localhost:8081'];
 
-console.log('Server starting with allowed origins (V2 - Aggressive Cleaning):', allowedOrigins);
+console.log('Server starting with allowed origins:', allowedOrigins);
 
 // CORS konfigurasjon
-app.use(cors({
-  origin: (origin, callback) => {
-    // Logg alle forespørsler for å se hva som skjer på serveren
-    console.log(`DEBUG: Incoming request from origin: "${origin}"`);
-    
+const corsOptions = {
+  origin: allowedOrigins.includes('*') ? '*' : (origin, callback) => {
     if (!origin) return callback(null, true);
-    
     const normalizedOrigin = origin.replace(/[\s`"']/g, '').replace(/\/$/, '');
-    
     if (allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
-      console.warn(`CORS REJECTED: "${normalizedOrigin}" not in [${allowedOrigins.join(', ')}]`);
+      console.warn(`CORS REJECTED: "${origin}" not in [${allowedOrigins.join(', ')}]`);
       callback(null, false);
     }
   },
-  credentials: true
-}));
+  credentials: !allowedOrigins.includes('*'),
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 
 // Generell rate limiter for alle forespørsler
 const globalLimiter = rateLimit({
@@ -126,13 +124,16 @@ app.get('/api/reservations', async (req, res) => {
     const reservations = await sql`
       SELECT * FROM reservations 
       WHERE date > CURRENT_DATE 
-      OR (date = CURRENT_DATE AND time >= date_trunc('hour', CURRENT_TIME::time))
+      OR (date = CURRENT_DATE AND time >= CURRENT_TIME)
       ORDER BY date ASC, time ASC
     `;
     res.json(reservations);
   } catch (err) {
     console.error('Error fetching reservations:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: err.message
+    });
   }
 });
 
@@ -141,13 +142,17 @@ app.get('/api/reservations/public', async (req, res) => {
     const reservations = await sql`
       SELECT date, time FROM reservations 
       WHERE date > CURRENT_DATE 
-      OR (date = CURRENT_DATE AND time >= date_trunc('hour', CURRENT_TIME::time))
+      OR (date = CURRENT_DATE AND time >= CURRENT_TIME)
       ORDER BY date ASC, time ASC
     `;
     res.json(reservations);
   } catch (err) {
     console.error('DATABASE ERROR on /api/reservations/public:', err);
-    res.status(500).json({ error: 'Internal server error', details: err.message });
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      message: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 });
 

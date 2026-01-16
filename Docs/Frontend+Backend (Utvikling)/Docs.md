@@ -16,7 +16,7 @@ Pålogging er håndtert i backenden. Da en bruker logger på så sender frontend
 Det samme gjelder også API endepunkter som krever å være en helse sykepleier.
 
 ### CORS
-Jeg brukte CORS (Cross-Origin Resource Sharing) for å begrense domene som hadde tilgang til nettsiden min, lokalt s ble dette `localhost:8001` og på serveren min så ble det `helse.the-diddy.party`
+Jeg brukte CORS (Cross-Origin Resource Sharing) for å begrense domene som hadde tilgang til nettsiden min, lokalt s ble dette `localhost:8081` og på serveren min så ble det `helse.the-diddy.party`
 
 ## Valg/Forbedringer 
 ### Seksjoner
