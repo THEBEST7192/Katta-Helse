@@ -83,12 +83,10 @@ micro .env
 **Backend innhold**
 ```
 PORT=6767
-
 DATABASE_URL=postgresql://postgres.DU-FÅR-IKKE:MITT-BRUKERNAVN&PASSORD@aws-1-eu-west-3.pooler.supabase.com:5432/postgres
-
 ALLOWED_ORIGINS=http://localhost:8081,https://helse.the-diddy.party
-
 DOCTOR_PASSWORD=qwerty
+RESERVATION_RETENTION_DAYS=1
 ```
 
 **Frontend**

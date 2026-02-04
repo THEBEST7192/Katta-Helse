@@ -91,6 +91,32 @@ const initDb = async () => {
 
 initDb();
 
+const reservationRetentionDaysEnv = parseInt(process.env.RESERVATION_RETENTION_DAYS || '1', 10); // 1 day, base 10
+const reservationRetentionDays = Number.isNaN(reservationRetentionDaysEnv) ? 1 : reservationRetentionDaysEnv;
+const cleanupIntervalMs = 24 * 60 * 60 * 1000;
+
+const cleanupOldReservations = async () => {
+  try {
+    await sql`
+      DELETE FROM reservations
+      WHERE CURRENT_DATE - date > ${reservationRetentionDays}
+    `;
+    console.log(`Old reservations cleanup completed (retention ${reservationRetentionDays} days)`);
+  } catch (err) {
+    console.error('Error cleaning up old reservations:', err);
+  }
+};
+
+setInterval(() => {
+  cleanupOldReservations().catch(err => {
+    console.error('Error in scheduled reservation cleanup:', err);
+  });
+}, cleanupIntervalMs);
+
+cleanupOldReservations().catch(err => {
+  console.error('Error running initial reservation cleanup:', err);
+});
+
 app.post('/api/login', strictLimiter, (req, res) => {
   const { password } = req.body;
   const correctPassword = process.env.DOCTOR_PASSWORD || 'katta123';
