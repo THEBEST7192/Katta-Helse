@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Phone, MapPin, MessageCircle, Heart, Info, ArrowRight, ExternalLink, Menu, X, Calendar, Clock, User, Mail, ChevronDown } from 'lucide-react';
+import { Phone, MapPin, MessageCircle, Heart, Info, ArrowRight, ExternalLink, Menu, X, Calendar, Clock, User, Mail, ChevronDown, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarView } from './components/Calendar/CalendarView';
 
@@ -22,6 +22,7 @@ function App() {
     time: '',
     message: ''
   });
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
@@ -108,6 +109,11 @@ function App() {
       return;
     }
 
+    if (!privacyAccepted) {
+      setSubmitStatus({ type: 'error', message: 'Du må godta personvernerklæringen for å sende inn skjemaet.' });
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitStatus(null);
 
@@ -124,6 +130,7 @@ function App() {
       if (response.ok) {
         setSubmitStatus({ type: 'success', message: 'Takk! Din reservasjon er mottatt.' });
         setReservation({ name: '', email: '', date: '', time: '', message: '' });
+        setPrivacyAccepted(false);
       } else {
         throw new Error('Noe gikk galt. Prøv igjen senere.');
       }
@@ -325,7 +332,7 @@ function App() {
 
             {/* Reservasjonsseksjon */}
             <section id="reservation" className="py-24 bg-katta-50">
-              <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -464,6 +471,30 @@ function App() {
                         {submitStatus.message}
                       </motion.div>
                     )}
+
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
+                      <div className="flex gap-3 items-start">
+                        <ShieldCheck className="h-5 w-5 text-katta-500 shrink-0 mt-0.5" />
+                        <div className="text-xs text-slate-600 leading-relaxed">
+                          <p className="font-semibold text-slate-700 mb-1">Personvern og sikkerhet</p>
+                          Informasjonen du sender her behandles konfidensielt av skolehelsetjenesten. 
+                          Vi lagrer kun nødvendige opplysninger for å kunne følge opp din henvendelse, 
+                          og dataene slettes automatisk {import.meta.env.VITE_RESERVATION_RETENTION_DAYS || '1'} {(import.meta.env.VITE_RESERVATION_RETENTION_DAYS || '1') === '1' ? 'dag' : 'dager'} etter at timen er passert.
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input 
+                          type="checkbox" 
+                          required
+                          checked={privacyAccepted}
+                          onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 text-katta-500 focus:ring-katta-500/20 cursor-pointer"
+                        />
+                        <span className="text-xs text-slate-600 group-hover:text-slate-900 transition-colors">
+                          Jeg forstår at mine opplysninger behandles konfidensielt og slettes automatisk {import.meta.env.VITE_RESERVATION_RETENTION_DAYS || '1'} {(import.meta.env.VITE_RESERVATION_RETENTION_DAYS || '1') === '1' ? 'dag' : 'dager'} etter at timen er passert.
+                        </span>
+                      </label>
+                    </div>
 
                     <button
                       type="submit"
