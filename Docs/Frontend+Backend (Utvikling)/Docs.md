@@ -11,7 +11,11 @@ Jeg brukte Git for versjon kontroll og lastet opp koden på GitHub, dette ville 
 
 ## Sikkert 
 ### Backend Pålogging
-Pålogging er håndtert i backenden. Da en bruker logger på så sender frontenden en API forespørsel til backenden med et bruker definert passord som brukeren har definert i frontenden, deretter samlinger backenden passordet det fikk fra frontenden med en miljøvariabel som ble satt i backenden. Hvis de er like så får brukeren tilgang til info om timene med person info, hvis passordene ikke er like så sender backenden en beskjed om at passordet var feil.
+Pålogging er håndtert i backenden ved bruk av en dedikert `doctors`-tabell. Da en bruker logger på, sender frontenden en API-forespørsel til `/api/login` med brukernavn og passord. Backenden verifiserer dette mot databasen ved å sammenligne passordet med en lagret bcrypt-hash.
+
+Hvis legitimasjonen er korrekt, får brukeren tilgang til pasientdata. Alle forespørsler til `/api/reservations` krever nå `x-username` og `x-password` i HTTP-headerne for autentisering. Dette sikrer at kun autoriserte leger kan se sensitiv pasientinformasjon.
+
+Hvis ingen leger er registrert i databasen, vil frontenden vise et systemvarsel som informerer om at en lege må opprettes manuelt i databasen.
 
 Det samme gjelder også API endepunkter som krever å være en helse sykepleier.
 

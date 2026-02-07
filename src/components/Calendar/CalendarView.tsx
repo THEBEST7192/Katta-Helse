@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Mail, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Calendar, Clock, User, Mail, ShieldCheck, ShieldAlert, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface Reservation {
@@ -91,16 +91,34 @@ function DoctorCalendar() {
   const [appointments, setAppointments] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [authToken, setAuthToken] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [hasDoctors, setHasDoctors] = useState<boolean | null>(null);
 
-  const fetchAppointments = async (token?: string) => {
+  useEffect(() => {
+    const checkDoctors = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6767';
+        const response = await fetch(`${apiUrl}/api/doctors/check`);
+        if (response.ok) {
+          const data = await response.json();
+          setHasDoctors(data.hasDoctors);
+        }
+      } catch (error) {
+        console.error("Feil ved sjekk av legestatus:", error);
+      }
+    };
+    checkDoctors();
+  }, []);
+
+  const fetchAppointments = async (user?: string, pass?: string) => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:6767';
       const response = await fetch(`${apiUrl}/api/reservations`, {
         headers: {
-          'Authorization': token || authToken
+          'x-username': user || username,
+          'x-password': pass || password
         }
       });
       if (response.ok) {
@@ -140,23 +158,41 @@ function DoctorCalendar() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setAuthToken(password);
         setIsAuthenticated(true);
-        fetchAppointments(password);
+        fetchAppointments(username, password);
       } else {
-        setLoginError(data.error || 'Feil passord');
+        setLoginError(data.error || 'Feil brukernavn eller passord');
       }
     } catch (error) {
       console.error("Innloggingsfeil:", error);
       setLoginError('Kunne ikke koble til serveren');
     }
   };
+
+  if (hasDoctors === false) {
+    return (
+      <div className="max-w-md mx-auto p-12 bg-white border border-red-200 rounded-3xl shadow-xl">
+        <div className="text-center">
+          <div className="inline-flex p-4 bg-red-50 rounded-full text-red-500 mb-4">
+            <ShieldAlert className="h-10 w-10" />
+          </div>
+          <h2 className="text-2xl font-bold text-red-700">Systemvarsel</h2>
+          <p className="text-slate-600 mt-4 leading-relaxed">
+            Det er ingen leger registrert i systemet ennå. 
+          </p>
+          <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200 text-left text-sm text-slate-500 font-mono">
+            Vennligst opprett en lege manuelt i databasens "doctors"-tabell før du kan logge inn.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -170,6 +206,17 @@ function DoctorCalendar() {
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Brukernavn</label>
+            <input 
+              type="text" 
+              className={`w-full px-4 py-3 rounded-xl border ${loginError ? 'border-red-500 bg-red-50' : 'border-slate-200'} focus:ring-2 focus:ring-katta-500 focus:border-transparent outline-none transition-all`}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Skriv inn brukernavn..."
+              autoComplete="username"
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Passord</label>
             <input 
               type="password" 
@@ -177,6 +224,7 @@ function DoctorCalendar() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Skriv inn passord..."
+              autoComplete="current-password"
             />
             {loginError && <p className="text-red-500 text-xs mt-1 font-medium">{loginError}</p>}
           </div>
@@ -199,7 +247,7 @@ function DoctorCalendar() {
         <button 
           onClick={() => {
             setIsAuthenticated(false);
-            setAuthToken('');
+            setUsername('');
             setPassword('');
           }} 
           className="text-sm text-slate-500 hover:text-red-500 flex items-center gap-1"

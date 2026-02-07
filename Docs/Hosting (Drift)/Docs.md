@@ -85,9 +85,18 @@ micro .env
 PORT=6767
 DATABASE_URL=postgresql://postgres.DU-FÅR-IKKE:MITT-BRUKERNAVN&PASSORD@aws-1-eu-west-3.pooler.supabase.com:5432/postgres
 ALLOWED_ORIGINS=http://localhost:8081,https://helse.the-diddy.party
-DOCTOR_PASSWORD=qwerty
 RESERVATION_RETENTION_DAYS=1
 ```
+
+### Administrasjon av leger
+Siden systemet nå bruker individuelle brukerkontoer for leger, må disse administreres direkte i databasen for økt sikkerhet. `DOCTOR_PASSWORD` miljøvariabelen er ikke lenger i bruk.
+
+For å legge til en ny lege, kjør følgende SQL-kommando:
+```sql
+INSERT INTO doctors (username, password_hash) 
+VALUES ('brukernavn', 'bcrypt_hash_av_passord');
+```
+Du kan generere en bcrypt-hash ved å bruke et verktøy som [bcrypt-generator.com](https://bcrypt-generator.com/).
 
 **Frontend**
 ```

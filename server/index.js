@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { rateLimit } from 'express-rate-limit';
+import bcrypt from 'bcryptjs';
 import sql from './db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -94,8 +95,22 @@ const initDb = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS doctors (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
     
-    // 2. Sjekk om reservations-tabellen eksisterer og har gammelt skjema (har 'email'-kolonne)
+    // 2. Sjekk om det finnes noen leger, hvis ikke skriv ut en advarsel
+    const doctors = await sql`SELECT COUNT(*) FROM doctors`;
+    if (parseInt(doctors[0].count) === 0) {
+      console.warn('ADVARSEL: Ingen leger er registrert i databasen. Systemet vil ikke tillate innlogging.');
+      console.warn('Vennligst opprett en lege manuelt i "doctors"-tabellen.');
+    }
     const tableInfo = await sql`
       SELECT column_name 
       FROM information_schema.columns 
@@ -231,14 +246,36 @@ cleanupOldReservations().catch(err => {
   console.error('Feil ved kjøring av første opprydding av reservasjoner:', err);
 });
 
-app.post('/api/login', strictLimiter, (req, res) => {
-  const { password } = req.body;
-  const correctPassword = process.env.DOCTOR_PASSWORD || 'katta123';
+app.get('/api/doctors/check', async (req, res) => {
+  try {
+    const result = await sql`SELECT COUNT(*) FROM doctors`;
+    const count = parseInt(result[0].count);
+    res.json({ hasDoctors: count > 0 });
+  } catch (err) {
+    res.status(500).json({ error: 'Kunne ikke sjekke legestatus' });
+  }
+});
 
-  if (password === correctPassword) {
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ success: false, error: 'Feil passord' });
+app.post('/api/login', strictLimiter, async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ success: false, error: 'Brukernavn og passord er påkrevd' });
+  }
+
+  try {
+    const [doctor] = await sql`
+      SELECT * FROM doctors WHERE username = ${username}
+    `;
+
+    if (doctor && await bcrypt.compare(password, doctor.password_hash)) {
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ success: false, error: 'Feil brukernavn eller passord' });
+    }
+  } catch (err) {
+    console.error('Innloggingsfeil:', err);
+    res.status(500).json({ success: false, error: 'Intern serverfeil' });
   }
 });
 
@@ -297,14 +334,22 @@ app.post('/api/reservations', strictLimiter, async (req, res) => {
 });
 
 app.get('/api/reservations', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  const correctPassword = process.env.DOCTOR_PASSWORD || 'katta123';
+  const username = req.headers['x-username'];
+  const password = req.headers['x-password'];
 
-  if (authHeader !== correctPassword) {
-    return res.status(401).json({ error: 'Uautorisert tilgang' });
+  if (!username || !password) {
+    return res.status(401).json({ error: 'Uautorisert tilgang: Brukernavn og passord mangler' });
   }
 
   try {
+    const [doctor] = await sql`
+      SELECT * FROM doctors WHERE username = ${username}
+    `;
+
+    if (!doctor || !(await bcrypt.compare(password, doctor.password_hash))) {
+      return res.status(401).json({ error: 'Uautorisert tilgang: Feil legitimasjon' });
+    }
+
     const reservations = await sql`
       SELECT 
         r.id, 
