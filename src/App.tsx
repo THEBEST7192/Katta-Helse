@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Phone, MapPin, MessageCircle, Heart, Info, ArrowRight, ExternalLink, Menu, X, Calendar, Clock, User, Mail, ChevronDown, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CalendarView } from './components/Calendar/CalendarView';
@@ -7,13 +7,14 @@ const navLinks = [
   { name: 'Hjem', id: 'home', view: 'landing' as const },
   { name: 'Tjenester', id: 'services', view: 'landing' as const },
   { name: 'Bestill time', id: 'reservation', view: 'landing' as const },
-  { name: 'Om oss', id: 'about', view: 'landing' as const },
+  { name: 'Snapchat', id: 'about', view: 'landing' as const },
   { name: 'FAQ', id: 'faq', view: 'landing' as const },
   { name: 'Kalender', id: 'calendar', view: 'calendar' as const },
 ];
 
 function App() {
   const [currentView, setCurrentView] = useState<'landing' | 'calendar'>('landing');
+  const [activeNavId, setActiveNavId] = useState('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [reservation, setReservation] = useState({
     name: '',
@@ -26,28 +27,70 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
+  const setSelectedNav = (id: string) => {
+    setActiveNavId(id);
+    localStorage.setItem('activeNavId', id);
+  };
+
+  const scrollToSection = useCallback((id: string) => {
+    const element = document.getElementById(id);
+    if (!element) return;
+    const header = document.querySelector('nav') as HTMLElement | null;
+    const offset = header ? header.offsetHeight : 60;
+    const top = element.getBoundingClientRect().top + window.scrollY - offset;
+    window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
+  }, []);
+
+  const scrollToSectionWhenReady = useCallback((id: string) => {
+    let attempts = 0;
+    const maxAttempts = 20;
+    const tryScroll = () => {
+      const element = document.getElementById(id);
+      if (element) {
+        scrollToSection(id);
+      } else if (attempts++ < maxAttempts) {
+        setTimeout(tryScroll, 50);
+      }
+    };
+    tryScroll();
+  }, [scrollToSection]);
+
+  const handleSnapchatCtaClick = () => {
+    setCurrentView('landing');
+    setIsMenuOpen(false);
+    setSelectedNav('about');
+
+    window.location.hash = 'about';
+  };
+
   const handleNavClick = (view: 'landing' | 'calendar', id: string) => {
     setCurrentView(view);
     setIsMenuOpen(false);
+    setSelectedNav(id);
     
     if (view === 'landing') {
-      window.location.hash = id;
-      setTimeout(() => {
-        const element = document.getElementById(id);
-        if (element) element.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    } else {
-      // For kalender, gå til offentlig som standard hvis ingen subview er valgt
-      if (id === 'calendar' && !window.location.hash.includes('#calendar#')) {
-        window.location.hash = 'calendar#public';
+      if (currentView === 'landing') {
+        if (isMenuOpen) {
+          setTimeout(() => scrollToSection(id), 260);
+        } else {
+          scrollToSection(id);
+        }
+        window.history.replaceState(null, '', `#${id}`);
       } else {
         window.location.hash = id;
       }
+    } else {
+      window.location.hash = id;
     }
   };
 
   // Håndter scrolling til hash ved oppstart og endring av hash
   useEffect(() => {
+    const storedActiveNavId = localStorage.getItem('activeNavId');
+    if (storedActiveNavId) {
+      setActiveNavId(storedActiveNavId);
+    }
+
     const handleHashChange = () => {
       const fullHash = window.location.hash.replace('#', '');
       if (!fullHash) return;
@@ -58,12 +101,15 @@ function App() {
       
       if (link) {
         setCurrentView(link.view);
+        setSelectedNav(mainHash || 'home');
         if (link.view === 'landing') {
           setTimeout(() => {
-            const element = document.getElementById(mainHash);
-            if (element) element.scrollIntoView({ behavior: 'smooth' });
-          }, 100);
+            scrollToSectionWhenReady(mainHash);
+          }, 250);
         }
+      }
+      if (!link && !mainHash) {
+        setSelectedNav('home');
       }
     };
 
@@ -72,7 +118,7 @@ function App() {
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []); // navLinks er nå utenfor komponenten, så denne er tom og trygg
+  }, [scrollToSectionWhenReady]); // navLinks er nå utenfor komponenten, så denne er tom og trygg
 
   const handleReservationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,25 +251,31 @@ function App() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-3">
-              <img src="/logo.svg" alt="Hamar Katedralskole" className="h-10 w-auto" />
+            <div 
+              className="flex items-center gap-3 cursor-pointer group"
+              onClick={() => handleNavClick('landing', 'home')}
+            >
+              <img src="/logo.svg" alt="Hamar Katedralskole" className="h-10 w-auto group-hover:opacity-80 transition-opacity" />
             </div>
             
             {/* Desktop Meny */}
             <div className="hidden md:flex items-center gap-8">
-              {navLinks.map((link) => (
-                <button
-                  key={link.id}
-                  onClick={() => handleNavClick(link.view, link.id)}
-                  className={`text-sm font-medium transition-colors ${
-                    (currentView === link.view) 
-                      ? 'text-katta-500' 
-                      : 'text-slate-600 hover:text-katta-500'
-                  }`}
-                >
-                  {link.name}
-                </button>
-              ))}
+              {navLinks.map((link) => {
+                const isActive = activeNavId === link.id;
+                return (
+                  <button
+                    key={link.id}
+                    onClick={() => handleNavClick(link.view, link.id)}
+                    className={`transition-all duration-200 ${
+                      isActive
+                        ? 'text-lg font-bold text-katta-500 hover:text-katta-600'
+                        : 'text-sm font-medium text-slate-600 hover:text-katta-600 hover:font-bold'
+                    }`}
+                  >
+                    {link.name}
+                  </button>
+                );
+              })}
               <button 
                 onClick={() => handleNavClick('landing', 'reservation')}
                 className="bg-katta-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-katta-600 transition-all shadow-sm active:scale-95"
@@ -252,15 +304,22 @@ function App() {
               className="md:hidden bg-white border-b border-slate-100 overflow-hidden"
             >
               <div className="px-4 py-6 space-y-4">
-                {navLinks.map((link) => (
-                  <button 
-                    key={link.id}
-                    className="block w-full text-left text-lg font-medium text-slate-900"
-                    onClick={() => handleNavClick(link.view, link.id)}
-                  >
-                    {link.name}
-                  </button>
-                ))}
+                {navLinks.map((link) => {
+                  const isActive = activeNavId === link.id;
+                  return (
+                    <button 
+                      key={link.id}
+                      className={`block w-full text-left transition-all py-2 ${
+                        isActive 
+                          ? 'text-katta-500 font-bold text-xl'
+                          : 'text-slate-900 text-lg font-medium hover:text-katta-600 hover:font-bold'
+                      }`}
+                      onClick={() => handleNavClick(link.view, link.id)}
+                    >
+                      {link.name}
+                    </button>
+                  );
+                })}
                 <button 
                   className="block w-full text-center bg-katta-500 text-white py-3 rounded-3xl font-bold"
                   onClick={() => handleNavClick('landing', 'reservation')}
@@ -289,16 +348,20 @@ function App() {
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button 
-                      onClick={() => handleNavClick('landing', 'about')}
+                      onClick={handleSnapchatCtaClick}
                       className="inline-flex items-center justify-center px-8 py-4 rounded-3xl bg-katta-500 text-white font-semibold text-lg hover:bg-katta-600 transition-all shadow-sm group"
                     >
                       <Phone className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                      Bestill time via SMS
+                      Kontakt via SMS
                     </button>
-                    <a href="#snapchat" className="inline-flex items-center justify-center px-8 py-4 rounded-3xl bg-white text-slate-900 border-2 border-slate-200 font-semibold text-lg hover:border-katta-300 transition-all group">
+                    <button 
+                      type="button"
+                      onClick={handleSnapchatCtaClick}
+                      className="inline-flex items-center justify-center px-8 py-4 rounded-3xl bg-white text-slate-900 border-2 border-slate-200 font-semibold text-lg hover:border-katta-300 transition-all group"
+                    >
                       <MessageCircle className="mr-2 h-5 w-5 text-yellow-500 group-hover:scale-110 transition-transform" />
                       Send oss en Snap
-                    </a>
+                    </button>
                   </div>
                 </motion.div>
               </div>
