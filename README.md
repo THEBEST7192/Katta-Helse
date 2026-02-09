@@ -36,6 +36,7 @@ En modernisert versjon av skolehelsetjenestens nettside for Hamar katedralskole.
 3. Konfigurer miljøvariabler:
    - Endre navn på `.env.example` til `.env`
    - Oppdater `DATABASE_URL` med din PostgreSQL-tilkoblingsstreng.
+   - For å generere krypteringsnøkkel kan du bruke `openssl rand -base64 32` (kan kjøres i WSL) og lagre verdien i `MESSAGE_ENCRYPTION_KEY`.
    - Valgfritt: sett `RESERVATION_RETENTION_DAYS` for hvor lenge gamle reservasjoner lagres (standard: `1` dag).
      - `0` = slett umiddelbart dagen etter behandling.
      - `1` = behold i 1 dag.

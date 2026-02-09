@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { rateLimit } from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import sql from './db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,6 +16,47 @@ dotenv.config({ path: path.resolve(__dirname, '.env.local'), override: true });
 
 const app = express();
 const port = process.env.PORT || 6767;
+
+const messageEncryptionKey = process.env.MESSAGE_ENCRYPTION_KEY
+  ? process.env.MESSAGE_ENCRYPTION_KEY.replace(/[\s`"']/g, '')
+  : null;
+const messageEncryptionPrefix = 'enc:v1:';
+const messageEncryptionAlgorithm = 'aes-256-gcm';
+
+const getMessageKey = () => {
+  if (!messageEncryptionKey) {
+    throw new Error('MESSAGE_ENCRYPTION_KEY mangler');
+  }
+  const key = Buffer.from(messageEncryptionKey, 'base64');
+  if (key.length !== 32) {
+    throw new Error('MESSAGE_ENCRYPTION_KEY må være 32 bytes base64');
+  }
+  return key;
+};
+
+const encryptMessage = (value) => {
+  if (!value) return value;
+  const iv = crypto.randomBytes(12);
+  const key = getMessageKey();
+  const cipher = crypto.createCipheriv(messageEncryptionAlgorithm, key, iv);
+  const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  const payload = Buffer.concat([iv, tag, ciphertext]).toString('base64');
+  return `${messageEncryptionPrefix}${payload}`;
+};
+
+const decryptMessage = (value) => {
+  if (!value) return value;
+  if (!value.startsWith(messageEncryptionPrefix)) return value;
+  const raw = Buffer.from(value.slice(messageEncryptionPrefix.length), 'base64');
+  const iv = raw.subarray(0, 12);
+  const tag = raw.subarray(12, 28);
+  const ciphertext = raw.subarray(28);
+  const key = getMessageKey();
+  const decipher = crypto.createDecipheriv(messageEncryptionAlgorithm, key, iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+};
 
 // Stol på proxy-headere (nødvendig for Cloudflare/proxy)
 app.set('trust proxy', 1);
@@ -167,7 +209,7 @@ const initDb = async () => {
           // Sett inn i den nye reservasjonstabellen
           await sql`
             INSERT INTO reservations_new (user_id, date, time, message, created_at)
-            VALUES (${userRow.id}, ${res.date}, ${res.time}, ${res.message}, ${res.created_at})
+            VALUES (${userRow.id}, ${res.date}, ${res.time}, ${encryptMessage(res.message)}, ${res.created_at})
           `;
         }
 
@@ -318,9 +360,10 @@ app.post('/api/reservations', strictLimiter, async (req, res) => {
       `;
       const userId = userRow.id;
 
+      const encryptedMessage = encryptMessage(message);
       const [reservation] = await sql`
         INSERT INTO reservations (user_id, date, time, message) 
-        VALUES (${userId}, ${date}, ${time}, ${message}) 
+        VALUES (${userId}, ${date}, ${time}, ${encryptedMessage}) 
         RETURNING *
       `;
       return reservation;
@@ -367,7 +410,11 @@ app.get('/api/reservations', async (req, res) => {
       OR (r.date = CURRENT_DATE AND r.time >= CURRENT_TIME)
       ORDER BY r.date ASC, r.time ASC
     `;
-    res.json(reservations);
+    const decrypted = reservations.map((reservation) => ({
+      ...reservation,
+      message: decryptMessage(reservation.message)
+    }));
+    res.json(decrypted);
   } catch (err) {
     console.error('Feil ved henting av reservasjoner:', err);
     res.status(500).json({ 
